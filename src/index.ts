@@ -1,3 +1,4 @@
+import fs from "fs";
 import { Command } from "commander";
 import "dotenv/config";
 import { Octokit } from "octokit";
@@ -26,7 +27,7 @@ function query() {
 		});
 }
 
-function node(nodeId: string) {
+function node(nodeId: string, isField?: boolean) {
 	const ghKey = process.env.GH_KEY ?? "";
 	const ghOwner = process.env.GH_OWNER ?? "";
 	const ghRepo = process.env.GH_REPO ?? "";
@@ -37,8 +38,9 @@ function node(nodeId: string) {
 		ghOwner,
 		ghPrjCategory,
 	);
-	github
-		.queryNode(nodeId)
+
+	const query = isField ? github.queryFiled(nodeId) : github.queryNode(nodeId);
+	query
 		.then((result) => {
 			console.log(JSON.stringify(result));
 		})
@@ -68,7 +70,7 @@ function addProjectsIssue(nodeId: string) {
 		});
 }
 
-function addRepositoryIssue(projectNodeId: string) {
+function addRepositoryIssue() {
 	const ghOwner = process.env.GH_OWNER ?? "";
 	const ghKey = process.env.GH_KEY ?? "";
 	const ghRepo = process.env.GH_REPO ?? "";
@@ -106,29 +108,111 @@ function addRepositoryIssue(projectNodeId: string) {
 		});
 }
 
+function updateProjectIssueField(
+	itemId: string,
+	fieldId: string,
+	valueId: string,
+) {
+	const ghOwner = process.env.GH_OWNER ?? "";
+	const ghKey = process.env.GH_KEY ?? "";
+	const ghRepo = process.env.GH_REPO ?? "";
+	const ghPrjCategory = process.env.PROJECT_CATEGORY ?? "user";
+	const ghPrjNum = +(process.env.GH_PROJECT ?? 1);
+	const github = new Octokit({ auth: ghKey });
+	const githubRp = new RepositoryGraphAdapter(github, ghOwner, ghPrjCategory);
+	const githubPrj = new ProjectGraphAdapter(github, ghOwner, ghPrjCategory);
+	const pjNode = githubPrj
+		.queryProject(ghPrjNum)
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+		.then((result: any) => {
+			console.log(JSON.stringify(result));
+			return githubPrj.updateIssueField(
+				result[ghPrjCategory].projectV2.id,
+				itemId,
+				fieldId,
+				valueId,
+			);
+		})
+		.catch((err) => {
+			console.log(JSON.stringify(err));
+		});
+}
+
+function updateProjectIssueFields(itemId: string, filePath: string) {
+	const ghOwner = process.env.GH_OWNER ?? "";
+	const ghKey = process.env.GH_KEY ?? "";
+	const ghRepo = process.env.GH_REPO ?? "";
+	const ghPrjCategory = process.env.PROJECT_CATEGORY ?? "user";
+	const ghPrjNum = +(process.env.GH_PROJECT ?? 1);
+	const github = new Octokit({ auth: ghKey });
+	const jsonData = fs.readFileSync(filePath, "utf8");
+	const json = JSON.parse(jsonData);
+	if (!json.fields) {
+		console.log("fields is required");
+		return;
+	}
+	const githubPrj = new ProjectGraphAdapter(github, ghOwner, ghPrjCategory);
+	const pjNode = githubPrj
+		.queryProject(ghPrjNum)
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+		.then((result: any) => {
+			console.log(JSON.stringify(result));
+			return githubPrj.updateIssueFields(
+				result[ghPrjCategory].projectV2.id,
+				itemId,
+				json.fields,
+			);
+		})
+		.then((result) => {
+			console.log(JSON.stringify(result));
+		})
+		.catch((err) => {
+			console.log(JSON.stringify(err));
+		});
+}
+
 app.command("query").action(async () => {
-	query();
+	await query();
 });
 
 app
 	.command("node")
 	.argument("[nodeId]", "github project node id")
-	.action(async (nodeId) => {
-		node(nodeId);
+	.option("-f, --field", "query field")
+	.action(async (nodeId, options) => {
+		await node(nodeId, options.field);
 	});
 
 app
 	.command("addDraft")
 	.argument("[nodeId]", "github project node id")
 	.action(async (nodeId) => {
-		addProjectsIssue(nodeId);
+		await addProjectsIssue(nodeId);
+	});
+
+app.command("addIssue").action(async () => {
+	await addRepositoryIssue();
+});
+
+app
+	.command("updateIssueFiled")
+	.option("-i, --itemId <itemId>", "github project issue id")
+	.option("-f, --fieldId <fieldId>", "github project field id")
+	.option("-v, --valueId <valueId>", "github project value id")
+	.action(async (options) => {
+		await updateProjectIssueField(
+			options.itemId,
+			options.fieldId,
+			options.valueId,
+		);
 	});
 
 app
-	.command("addIssue")
-	.argument("<nodeId>", "github project node id")
-	.action(async (nodeId) => {
-		addRepositoryIssue(nodeId);
+	.command("updateIssueFields")
+	.option("--file <filePath>", "path file json path")
+	.argument("<itemId>", "github project issue id")
+	.action(async (itemId, options) => {
+		await updateProjectIssueFields(itemId, options.file);
 	});
 
 app.parse(process.argv);
