@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs from "node:fs";
 import { Command } from "commander";
 import "dotenv/config";
 import { Octokit } from "octokit";

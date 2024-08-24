@@ -1,4 +1,5 @@
-import { Octokit } from "octokit";
+import type { Octokit } from "octokit";
+
 
 export class ProjectGraphAdapter {
 	constructor(
