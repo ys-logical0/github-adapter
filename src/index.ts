@@ -49,6 +49,28 @@ function node(nodeId: string, isField?: boolean) {
 		});
 }
 
+function nodeQuerySelect(nodeId: string, filedName: string) {
+	const ghKey = process.env.GH_KEY ?? "";
+	const ghOwner = process.env.GH_OWNER ?? "";
+	const ghRepo = process.env.GH_REPO ?? "";
+	const ghPrjCategory = process.env.PROJECT_CATEGORY ?? "user";
+	const ghPrjNum = +(process.env.GH_PROJECT ?? 1);
+	const github = new ProjectGraphAdapter(
+		new Octokit({ auth: ghKey }),
+		ghOwner,
+		ghPrjCategory,
+	);
+
+	github
+		.queryFiledBySingleSelectField(nodeId, filedName)
+		.then((result) => {
+			console.log(JSON.stringify(result));
+		})
+		.catch((err) => {
+			console.log(JSON.stringify(err));
+		});
+}
+
 function addProjectsIssue(nodeId: string) {
 	const ghOwner = process.env.GH_OWNER ?? "";
 	const ghKey = process.env.GH_KEY ?? "";
@@ -181,6 +203,19 @@ app
 	.option("-f, --field", "query field")
 	.action(async (nodeId, options) => {
 		await node(nodeId, options.field);
+	});
+
+app
+	.command("nodeQuery")
+	.argument("[nodeId]", "github project node id")
+	.option("-n, --name <field name>", "field name")
+	.option("-s, --select", "query single select field")
+	.action(async (nodeId, options) => {
+		if (options.select) {
+			nodeQuerySelect(nodeId, options.name);
+		} else {
+			node(nodeId);
+		}
 	});
 
 app

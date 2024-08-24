@@ -57,6 +57,27 @@ query {
 		return this.github.graphql(query);
 	}
 
+	async queryFiledBySingleSelectField(nodeId: string, filedName: string) {
+		const query = `
+query {
+	node(id: "${nodeId}") {
+		... on ProjectV2 {
+			field(name: "${filedName}") {
+				... on ProjectV2SingleSelectField {
+					id
+					name
+					options {
+						id
+						name
+					}
+				}
+			}
+		}
+	}
+}`;
+		return this.github.graphql(query);
+	}
+
 	async queryNode(nodeId: string) {
 		const query = `
 query {
