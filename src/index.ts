@@ -109,7 +109,12 @@ function addRepositoryIssue() {
 		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 		.then((result: any) => {
 			console.log(JSON.stringify(result));
-			return githubRp.addIssue(result.repository.id);
+			return githubRp.addIssue(
+				result.repository.id,
+				"test",
+				"1 line body\n 2 line body",
+				["Ace"],
+			);
 		})
 		.catch((err) => {
 			console.log(JSON.stringify(err));

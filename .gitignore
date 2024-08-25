@@ -205,3 +205,4 @@ dist
 .pnp.*
 
 input.json
+*.js
