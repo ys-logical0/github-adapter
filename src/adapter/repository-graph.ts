@@ -6,7 +6,7 @@ export type CommonNode = {
 	name: string;
 };
 
-export type ProjectLabelNode = {
+export type RepositoryLabelNode = {
 	[key in string]: CommonNode | never;
 };
 
@@ -14,16 +14,16 @@ export type CreateLabelNode = {
 	[key in string]: { label: CommonNode };
 };
 
-export type ProjectNode = {
+export type RepositoryNode = {
 	repository: CommonNode;
 };
 
 export type ProjectIdNodeWithLabel = {
-	node: ProjectLabelNode;
+	node: RepositoryLabelNode;
 };
 
-export type ProjectNameNodeWithLabel = {
-	repository: ProjectLabelNode;
+export type RepositoryNameNodeWithLabel = {
+	repository: RepositoryLabelNode;
 };
 
 export class RepositoryGraphAdapter {
@@ -102,7 +102,7 @@ mutation($repositoryId: ID!, $title: String!, $body: String!,$labels: [ID!]) {
 	async queryLabels(
 		repositoryName: string,
 		labels: string[],
-	): Promise<ProjectNameNodeWithLabel> {
+	): Promise<RepositoryNameNodeWithLabel> {
 		const labelsQuery = labels.map((label, index) => {
 			return `
 el${index}:label(name: "${label}") {
