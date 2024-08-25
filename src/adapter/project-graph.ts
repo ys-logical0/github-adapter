@@ -1,6 +1,5 @@
 import type { Octokit } from "octokit";
 
-
 export class ProjectGraphAdapter {
 	constructor(
 		private github: Octokit,
@@ -14,6 +13,37 @@ query {
 		projectV2(number: ${projectId}) {
 			id
 			title
+			Status:field(name: "Status") {
+				... on ProjectV2SingleSelectField {
+					id
+					name
+					dataType
+					options {
+						id
+						name
+					}
+				}
+			}
+			Iteration:field(name: "Iteration") {
+				... on ProjectV2IterationField {
+					id
+					name
+					dataType
+					configuration{
+						iterations {
+							startDate
+							id
+						}
+					}
+				}
+			}
+			Title:field(name: "Title") {
+				... on ProjectV2Field {
+					id
+					name
+					dataType
+				}
+			}
 		}
 	}
 }`;
@@ -58,12 +88,12 @@ query {
 		return this.github.graphql(query);
 	}
 
-	async queryFiledBySingleSelectField(nodeId: string, filedName: string) {
+	async queryFiledBySingleSelectField(nodeId: string, fieldName: string) {
 		const query = `
 query {
 	node(id: "${nodeId}") {
 		... on ProjectV2 {
-			field(name: "${filedName}") {
+			field(name: "${fieldName}") {
 				... on ProjectV2SingleSelectField {
 					id
 					name
@@ -207,31 +237,49 @@ mutation {
 				| { iterationId: string };
 		}[],
 	) {
-		const query = `\
-mutation ($projectId: ID!, $itemId: ID!, $fieldId: ID!, $fieldValues: ProjectV2FieldValue!) {
-    updateProjectV2ItemFieldValue(
-		input: {
-			projectId: $projectId
-			itemId: $itemId
-			fieldId: $fieldId
-			value: $fieldValues
-		}
-	) {
-		projectV2Item {
-			id
-		}
+		const variablesParts: string[] = [];
+		const bodyParts: string[] = [];
+		type UpdateInput = {
+			projectId: string;
+			itemId: string;
+			fieldId: string;
+			value:
+				| { singleSelectOptionId: string }
+				| { text: string }
+				| { date: Date }
+				| { number: number }
+				| { iterationId: string };
+		};
+		const inputVariables: Record<string, UpdateInput> = {};
+		fieldNodes.forEach((fieldNode, _) => {
+			variablesParts.push(
+				`$${fieldNode.fieldId}: UpdateProjectV2ItemFieldValueInput!`,
+			);
+			bodyParts.push(`\
+			${fieldNode.fieldId}:updateProjectV2ItemFieldValue(
+	input: $${fieldNode.fieldId}
+) {
+	projectV2Item {
+		id
 	}
 }
-`;
-		const req = fieldNodes.map((fieldNode) => {
-			return this.github.graphql({
-				query,
+`);
+			inputVariables[`${fieldNode.fieldId}`] = {
 				projectId: projectNodeId,
 				itemId: itemNodeId,
 				fieldId: fieldNode.fieldId,
-				fieldValues: fieldNode.value,
-			});
+				value: fieldNode.value,
+			};
 		});
-		return Promise.all(req);
+
+		const query = `\
+mutation (${variablesParts.join(",")}){
+	${bodyParts.join("\n")}
+}`;
+
+		return this.github.graphql({
+			query,
+			...inputVariables,
+		});
 	}
 }
