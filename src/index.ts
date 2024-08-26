@@ -27,7 +27,13 @@ function query() {
 		});
 }
 
-function node(nodeId: string, isField?: boolean) {
+function node(
+	nodeId: string,
+	option: {
+		isField?: boolean;
+		isIteration?: boolean;
+	},
+) {
 	const ghKey = process.env.GH_KEY ?? "";
 	const ghOwner = process.env.GH_OWNER ?? "";
 	const ghRepo = process.env.GH_REPO ?? "";
@@ -39,7 +45,16 @@ function node(nodeId: string, isField?: boolean) {
 		ghPrjCategory,
 	);
 
-	const query = isField ? github.queryFiled(nodeId) : github.queryNode(nodeId);
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	let query: Promise<any>;
+	if (option.isField) {
+		query = github.queryFiled(nodeId);
+	} else if (option.isIteration) {
+		query = github.queryProjectItemByIterationField(nodeId);
+	} else {
+		query = github.queryNode(nodeId);
+	}
+
 	query
 		.then((result) => {
 			console.log(JSON.stringify(result));
@@ -122,6 +137,8 @@ function addRepositoryIssue() {
 	Promise.all([pjNode, issueNode])
 		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 		.then(([res1, res2]: any[]) => {
+			console.log(JSON.stringify(res1));
+			console.log(JSON.stringify(res2));
 			return githubPrj.linkIssue(
 				res1[ghPrjCategory].projectV2.id,
 				res2.createIssue.issue.id,
@@ -206,8 +223,12 @@ app
 	.command("node")
 	.argument("[nodeId]", "github project node id")
 	.option("-f, --field", "query field")
+	.option("-i, --iteration", "query iteration")
 	.action(async (nodeId, options) => {
-		await node(nodeId, options.field);
+		await node(nodeId, {
+			isField: options.field,
+			isIteration: options.iteration,
+		});
 	});
 
 app

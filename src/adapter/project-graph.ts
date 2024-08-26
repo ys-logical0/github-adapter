@@ -33,6 +33,7 @@ query {
 						iterations {
 							startDate
 							id
+							title
 						}
 					}
 				}
@@ -69,6 +70,7 @@ query {
 							iterations {
 								startDate
 								id
+								title
 							}
 						}
 					}
@@ -100,6 +102,47 @@ query {
 					options {
 						id
 						name
+					}
+				}
+			}
+		}
+	}
+}`;
+		return this.github.graphql(query);
+	}
+
+	async queryProjectItemByIterationField(projectId: string) {
+		const query = `
+query {
+	node(id: "${projectId}") {
+		... on ProjectV2 {
+			items(last: 100) {
+				nodes{
+					id
+					Status: fieldValueByName(name:"Status") {
+						...on ProjectV2ItemFieldSingleSelectValue {
+							id
+							name
+							optionId
+						}
+					}
+					Iteration: fieldValueByName(name:"Iteration") {
+						...on ProjectV2ItemFieldIterationValue {
+							id
+							title
+							iterationId
+							item {
+								content{
+									...on Issue{
+										id
+										title
+										body
+										closed
+										url
+									}
+								}
+							}
+						}
 					}
 				}
 			}
