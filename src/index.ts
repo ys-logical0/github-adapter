@@ -1,6 +1,6 @@
-import fs from "node:fs";
 import { Command } from "commander";
 import "dotenv/config";
+import fs from "node:fs";
 import { Octokit } from "octokit";
 import { ProjectGraphAdapter } from "./adapter/project-graph.js";
 import { RepositoryGraphAdapter } from "./adapter/repository-graph.js";
@@ -27,7 +27,7 @@ function query() {
 		});
 }
 
-function node(
+async function node(
 	nodeId: string,
 	option: {
 		isField?: boolean;
@@ -46,22 +46,27 @@ function node(
 	);
 
 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-	let query: Promise<any>;
-	if (option.isField) {
-		query = github.queryFiled(nodeId);
-	} else if (option.isIteration) {
-		query = github.queryProjectItemByIterationField(nodeId);
-	} else {
-		query = github.queryNode(nodeId);
+
+	const queryFunc = async (depth:number = 0, after: string | null = null): Promise<any[]> => {
+		let query: any;
+		let result: any[] = [];
+		if (option.isField) {
+			query = await github.queryFiled(nodeId, after);
+		} else if (option.isIteration) {
+			query = await github.queryProjectItemByIterationField(nodeId, after);
+		} else {
+			query = await github.queryNode(nodeId, after);
+		}
+
+		if (query.node.items.pageInfo.hasNextPage && depth < 5) {
+			let queryRes = await queryFunc(depth+1, query.node.items.pageInfo.endCursor)
+			result.push(...queryRes)
+		}
+		return result.concat(...query.node.items.nodes);
 	}
 
-	query
-		.then((result) => {
-			console.log(JSON.stringify(result));
-		})
-		.catch((err) => {
-			console.log(JSON.stringify(err));
-		});
+	const result = await queryFunc()
+	console.log(JSON.stringify(result));
 }
 
 function nodeQuerySelect(nodeId: string, filedName: string) {
@@ -240,7 +245,7 @@ app
 		if (options.select) {
 			nodeQuerySelect(nodeId, options.name);
 		} else {
-			node(nodeId);
+			node(nodeId, {});
 		}
 	});
 

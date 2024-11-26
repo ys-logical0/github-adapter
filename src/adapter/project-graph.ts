@@ -51,12 +51,12 @@ query {
 		return this.github.graphql(query);
 	}
 
-	async queryFiled(nodeId: string) {
+	async queryFiled(nodeId: string, after: string | null = null) {
 		const query = `
 query {
 	node(id: "${nodeId}") {
 		... on ProjectV2 {
-			fields(first: 20) {
+			fields(first: 20, after: "${after}") {
 				nodes {
 					... on ProjectV2Field {
 							id
@@ -111,12 +111,12 @@ query {
 		return this.github.graphql(query);
 	}
 
-	async queryProjectItemByIterationField(projectId: string) {
+	async queryProjectItemByIterationField(projectId: string, after: string | null = null) {
 		const query = `
 query {
 	node(id: "${projectId}") {
 		... on ProjectV2 {
-			items(last: 100) {
+			items(last: 100, after: "${after}") {
 				nodes{
 					id
 					Status: fieldValueByName(name:"Status") {
@@ -152,12 +152,12 @@ query {
 		return this.github.graphql(query);
 	}
 
-	async queryNode(nodeId: string) {
+	async queryNode(nodeId: string, after: string | null = null) {
 		const query = `
 query {
 	node(id: "${nodeId}") {
 		... on ProjectV2 {
-			items(first: 20) {
+			items(first: 20, after: "${after}") {
 				nodes{
 					id
 					fieldValues(first: 8) {
@@ -207,6 +207,13 @@ query {
 						}
 					}
 				}
+				pageInfo {
+					endCursor
+					startCursor
+					hasNextPage
+					hasPreviousPage
+				}
+				totalCount
 			}
 		}
 	}
